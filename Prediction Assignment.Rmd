@@ -1,0 +1,76 @@
+---
+title: "Prediction Assignment"
+output: html_document
+---
+
+```{r}
+library(caret)
+library(rpart)
+library(randomForest)
+```
+
+
+
+Importing data and cleaning 
+
+```{r}
+pml_training <- read.csv("pml-training (1).csv",na.strings=c("NA","#DIV/0!", ""))
+pml_testing <- read.csv("pml-testing.csv", na.strings=c("NA","#DIV/0!", ""))
+
+# Cleaning data: remove columns from a data frame that contain any NA (missing) values and first 7 columns
+pml_training <- pml_training[, colSums(is.na(pml_training)) == 0]
+pml_training <- pml_training[,-c(1:7)]
+pml_testing <- pml_testing[, colSums(is.na(pml_testing)) == 0]
+pml_testing<- pml_testing[, -c(1:7)]
+```
+
+Split pml_training data set into training and test set for model building and testing
+
+```{r}
+set.seed(1234)
+inTrain1 <- createDataPartition(pml_training$classe, p = 0.7, list = FALSE)
+pml_training_train <- pml_training[inTrain1,]
+pml_training_test <- pml_training[-inTrain1,]
+```
+
+Decision Tree Model 
+```{r}
+set.seed(123)
+Decision_Tree <- train(classe~., data = pml_training_train, method = 'rpart')
+suppressMessages(library(rattle))
+library(rpart.plot)
+fancyRpartPlot(Decision_Tree$finalModel)
+```
+```{r}
+DecisionTreePredict <- predict(Decision_Tree, pml_training_test)
+pml_training_test$classe <- as.factor(pml_training_test$classe)
+confusionMatrix(pml_training_test$classe, DecisionTreePredict)
+```
+
+Random Forest Model
+```{r}
+set.seed(123)
+pml_training_train$classe <- as.factor(pml_training_train$classe)
+RFModel <- randomForest(classe~.,pml_training_train, ntree=500)
+RFPredict <- predict(RFModel, pml_training_test)
+pml_training_test$classe <- as.factor(pml_training_test$classe)
+confusionMatrix(pml_training_test$classe, RFPredict)
+```
+
+LDA Model
+
+```{r}
+set.seed(123)
+LDA <- train(classe~., data = pml_training_train, method = "lda")
+LDAPredict <- predict(LDA, pml_training_test)
+pml_training_test$classe <- as.factor(pml_training_test$classe)
+confusionMatrix(pml_training_test$classe, LDAPredict)
+```
+Conclusion
+Comparing Decision Tree, Random Forest, and LDA; Random Forest model has the highest accuracy (99.6%). Hence, this model was applied to make predictions on the 20 participants in test cases
+```{r}
+predictFinal<-predict(RFModel,pml_testing)
+predictFinal
+```
+
+
